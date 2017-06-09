@@ -4,16 +4,20 @@
     android:layout_height="match_parent">
 
     <FrameLayout
+        android:layout_margin="5dp"
         android:layout_width="50dp"
         android:layout_height="50dp"
         >
 
         <ImageView
+            android:id="@+id/img_arrow"
             android:layout_gravity="center"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:src="@drawable/common_listview_headview_red_arrow"/>
         <ProgressBar
+            android:id="@+id/pb"
+            android:visibility="invisible"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:indeterminateDrawable="@drawable/shape_progress"
