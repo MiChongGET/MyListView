@@ -11,29 +11,77 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity {
+import cn.buildworld.mylistview.util.RefreshListView;
 
-    private ListView listView;
+public class MainActivity extends AppCompatActivity{
+
+    private RefreshListView listView;
     private ArrayList<String> arrayList;
+    private MyAdapter myAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        listView = (ListView) findViewById(R.id.list_item);
+        listView = (RefreshListView) findViewById(R.id.list_item);
+
+        listView.setRefreshListener(new RefreshListView.OnrefreshListener() {
+            @Override
+            public void onRefresh() {
+                new Thread(){
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        arrayList.add(0,"我是刷新的数据");
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                myAdapter.notifyDataSetChanged();
+                                listView.onRefreshComplete();
+                            }
+                        });
+                    }
+                }.start();
+            }
+
+            //加载更多
+            @Override
+            public void LoaderMore() {
+                new Thread(){
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        arrayList.add("我是加载的数据的数据1234");
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                myAdapter.notifyDataSetChanged();
+                                listView.onRefreshComplete();
+                            }
+                        });
+                    }
+                }.start();
+            }
+        });
 
         arrayList = new ArrayList<>();
 
-        Button button = new Button(this);
-        button.setText("我是头布局");
-//        listView.addHeaderView(button);
-
-        listView.addFooterView(button);
         for (int i = 0; i <30 ; i++) {
             arrayList.add("我是第"+i);
         }
 
-        listView.setAdapter(new MyAdapter());
+        myAdapter = new MyAdapter();
+        listView.setAdapter(myAdapter);
     }
+
 
     class MyAdapter extends BaseAdapter{
 

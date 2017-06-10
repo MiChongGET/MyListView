@@ -2,15 +2,18 @@ package cn.buildworld.mylistview.util;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Printer;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
+import android.widget.AbsListView;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import java.text.SimpleDateFormat;
 
 import cn.buildworld.mylistview.R;
 
@@ -21,7 +24,7 @@ import cn.buildworld.mylistview.R;
  * 下拉刷新自定义设置
  *
  */
-public class RefreshListView extends ListView {
+public class RefreshListView extends ListView implements AbsListView.OnScrollListener {
 
     private View view;
 
@@ -37,6 +40,11 @@ public class RefreshListView extends ListView {
     private TextView mTitleText;
     private ProgressBar bar;
     private int paddingTop;
+    private TextView last_refresh;
+    private View footerView;
+    private int footerViewMeasuredHeight;
+    private String TAG = "滑动监听";
+    private boolean isLoadingMore ;
 
 
     public RefreshListView(Context context) {
@@ -61,9 +69,30 @@ public class RefreshListView extends ListView {
 
 
     private void init() {
-        initHeaderView();
+        initHeaderView();//头布局
         initAnimation();
+
+        initFooterView();//脚布局
+        setOnScrollListener(this);//滑动监听
     }
+
+
+    /**
+     * 初始化脚布局
+     *
+     */
+    private void initFooterView() {
+        footerView = View.inflate(getContext(), R.layout.layout_footer_list,null);
+        footerView.measure(0,0);
+        footerViewMeasuredHeight = footerView.getMeasuredHeight();
+
+        footerView.setPadding(0,-footerViewMeasuredHeight,0,0);
+
+        addFooterView(footerView);
+
+    }
+
+
 
     /**
      * 初始化头布局的动画
@@ -95,7 +124,7 @@ public class RefreshListView extends ListView {
         mArrowView = (ImageView) view.findViewById(R.id.img_arrow);
         mTitleText = (TextView) view.findViewById(R.id.tv_title);
         bar = (ProgressBar) view.findViewById(R.id.pb);
-
+        last_refresh = (TextView) view.findViewById(R.id.tv_desc_last_refresh);
 
 
 
@@ -197,10 +226,86 @@ public class RefreshListView extends ListView {
                 bar.setVisibility(VISIBLE);
                 mTitleText.setText("正在刷新中...");
 
+                if (onrefreshListener != null){
+                    //通知调用者，让其加载网络数据
+                    onrefreshListener.onRefresh();
+                }
+
                 break;
 
             default:
                 break;
         }
+    }
+
+
+    //监听回调
+    private OnrefreshListener onrefreshListener;//刷新监听
+
+    public interface OnrefreshListener{
+        void onRefresh();
+        void LoaderMore();
+    }
+
+    public void setRefreshListener(OnrefreshListener onrefreshListener){
+        this.onrefreshListener = onrefreshListener;
+    }
+
+
+    //刷新结束，恢复效果
+    public void onRefreshComplete() {
+        if (isLoadingMore){//加载更多
+
+            footerView.setPadding(0,-footerViewMeasuredHeight,0,0);
+            isLoadingMore = false;
+
+        }else {
+            //下拉刷新
+            currentState = PULL_TO_REFRESH;
+            mTitleText.setText("下拉刷新");
+            view.setPadding(0,-mHeaderViewHeight,0,0);//隐藏头布局
+            bar.setVisibility(INVISIBLE);
+            mArrowView.setVisibility(VISIBLE);
+
+            String time = getTime();
+//        System.out.println("刷新时间："+time);
+            last_refresh.setText("最后刷新时间："+time);
+        }
+
+
+    }
+
+
+    //获取时间
+    public String getTime() {
+        long currentTime = System.currentTimeMillis();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return dateFormat.format(currentTime);
+    }
+
+
+    //滑动监听
+    @Override
+    public void onScrollStateChanged(AbsListView view, int scrollState) {
+//        Log.i(TAG, "onScrollStateChanged: "+scrollState);
+        if(isLoadingMore){
+            return; // 已经在加载更多.返回
+        }
+
+        // 最新状态是空闲状态, 并且当前界面显示了所有数据的最后一条. 加载更多
+        if (scrollState == SCROLL_STATE_IDLE && getLastVisiblePosition() >= (getCount()-1)){
+            isLoadingMore = true;
+
+            footerView.setPadding(0, 0, 0, 0);
+            setSelection(getCount()); // 跳转到最后一条, 使其显示出加载更多.
+
+            if (onrefreshListener != null){
+                onrefreshListener.LoaderMore();
+            }
+        }
+    }
+    @Override
+    public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+
     }
 }
